@@ -172,3 +172,5 @@ Mỗi lần đăng nhập, sai mã, gửi/gửi lại OTP, sai OTP… đều đ�
 | *Không có quyền truy cập* | `PROXY_KEY` hai bên chưa trùng nhau |
 | *Apps Script không trả về JSON* | Sai URL Web App, hoặc chưa đặt *Who has access = Anyone* |
 | Sửa `Code.gs` nhưng không thấy thay đổi | Chưa tạo **New version** khi deploy |
+| *Máy chủ trả về dữ liệu đăng nhập không đầy đủ* / *Web App trả về doGet thay vì doPost* | `APPS_SCRIPT_URL` sai dạng: dùng đúng URL `https://script.google.com/macros/s/.../exec` lấy ở Deploy → Manage deployments (không dùng `/dev`, không dùng `/a/macros/<tên miền>/...`) |
+| Trang web vẫn hiện giao diện cũ sau khi push | `name` trong `wrangler.toml` phải trùng tên Worker (vd. `dggv` cho `dggv.<tài-khoản>.workers.dev`) và Worker phải được nối với đúng repo này |

@@ -1045,6 +1045,10 @@ async function resendOtp() {
 }
 
 function finishLogin(res) {
+  if (!res || !res.token || !res.user || !res.user.hoTen) {
+    alert('⚠️ Máy chủ trả về dữ liệu đăng nhập không đầy đủ. Vui lòng báo quản trị viên kiểm tra APPS_SCRIPT_URL và bản deploy Apps Script.');
+    return;
+  }
   state.token = res.token;
   state.user = res.user;
   store.set('vcnld_token', res.token);
@@ -2000,7 +2004,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const token = store.get('vcnld_token'), user = store.get('vcnld_user');
   if (token && user) {
-    try { state.token = token; state.user = JSON.parse(user); enterApp(); }
+    try {
+      const u = JSON.parse(user);
+      if (!u || !u.hoTen) throw new Error('bad session');
+      state.token = token; state.user = u; enterApp();
+    }
     catch (e) { logout(); }
   }
 });
