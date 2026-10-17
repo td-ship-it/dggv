@@ -608,7 +608,7 @@
 
     <footer>
       <p><b>PHIẾU TỰ ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC TRỰC TUYẾN</b></p>
-      <p>© 2026 Phòng Tổ chức cán bộ</p>
+      <p>© 2026 Phòng Tổ chức cán bộ · <span style="opacity:.7">giảng viên · phiên bản 2026.10.17</span></p>
     </footer>
   </div>
 </div>
@@ -692,20 +692,33 @@ function setBusy(btn, busy, busyText) {
 function setStatus(el, cls, html) { el.className = 'status-msg' + (cls ? ' ' + cls : ''); el.innerHTML = html || ''; }
 function showError(err) { if (!err || !err.handled) alert('⚠️ ' + (err && err.message ? err.message : err)); }
 
+// Các thao tác phải trả về danh sách — nếu không phải danh sách là máy chủ trả sai, không được dùng
+const LIST_ACTIONS = ['getUserHistory', 'getStaffData', 'getAllStaffData'];
+const API_TIMEOUT_MS = 90 * 1000;
+function apiError(message, code) { const e = new Error(message); e.code = code; return e; }
+
 async function api(action, args) {
   let res;
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), API_TIMEOUT_MS) : null;
   try {
     res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, args: args || {}, token: state.token })
+      body: JSON.stringify({ action, args: args || {}, token: state.token }),
+      signal: ctl ? ctl.signal : undefined
     });
   } catch (e) {
-    throw new Error('Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+    clearTimeout(timer);
+    if (e && e.name === 'AbortError')
+      throw apiError('Máy chủ phản hồi quá lâu. Vui lòng thử lại sau ít phút.', 'TIMEOUT');
+    throw apiError('Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.', 'NETWORK');
   }
   let j;
   try { j = await res.json(); }
-  catch (e) { throw new Error('Máy chủ phản hồi không hợp lệ (HTTP ' + res.status + ').'); }
+  catch (e) { clearTimeout(timer); throw apiError('Máy chủ phản hồi không hợp lệ (HTTP ' + res.status + '). Vui lòng thử lại.', 'UPSTREAM'); }
+  clearTimeout(timer);
+  if (!j || typeof j !== 'object') throw apiError('Máy chủ phản hồi không hợp lệ. Vui lòng thử lại.', 'UPSTREAM');
   if (!j.success) {
     const err = new Error(j.message || 'Lỗi không xác định');
     err.code = j.code;
@@ -716,7 +729,13 @@ async function api(action, args) {
     }
     throw err;
   }
-  return j.data;
+  const d = j.data;
+  // Phản hồi của doGet (Google chuyển hướng sai) hoặc sai kiểu → coi là lỗi tạm thời
+  if (d && typeof d === 'object' && !Array.isArray(d) && d.service && !('user' in d))
+    throw apiError('Máy chủ Google đang phản hồi bất thường. Vui lòng thử lại sau ít giây.', 'UPSTREAM');
+  if (LIST_ACTIONS.indexOf(action) >= 0 && !Array.isArray(d))
+    throw apiError('Máy chủ trả dữ liệu không hợp lệ. Vui lòng thử lại sau ít giây.', 'UPSTREAM');
+  return d;
 }
 
 function downloadBase64(b64, fileName, mime) {
@@ -1095,6 +1114,7 @@ function getHistory(force) {
   if (fresh && !force) return Promise.resolve(cache.history);
   if (cache.historyP && !force) return cache.historyP;
   const p = api('getUserHistory').then(d => {
+    if (!Array.isArray(d)) throw apiError('Máy chủ trả dữ liệu không hợp lệ. Vui lòng thử lại.', 'UPSTREAM');
     if (cache.historyP === p) { cache.history = d; cache.historyAt = Date.now(); cache.historyP = null; }
     return d;
   }, e => { if (cache.historyP === p) cache.historyP = null; throw e; });
@@ -1102,7 +1122,7 @@ function getHistory(force) {
   return p;
 }
 function markSubmitted(month, score, grade) {
-  if (!cache.history) return;
+  if (!Array.isArray(cache.history)) { cache.history = null; cache.historyAt = 0; return; }
   cache.history = [{ thang: month, donVi: state.user.donVi, tongDiem: score, xepLoai: grade, sepLoai: '' }]
     .concat(cache.history.filter(r => r.thang !== month));
   cache.historyAt = Date.now();
@@ -1268,19 +1288,11 @@ async function submitData() {
   btns.forEach(b => setBusy(b, true, '⏳ Đang gửi...'));
   try {
     const res = await api('saveData', { form });
-    markSubmitted(form.assessmentMonth, res.score, res.grade);
-    document.getElementById('res-score').textContent = res.score;
-    document.getElementById('res-grade').textContent = res.grade;
-    document.getElementById('res-month').textContent = monthLabel(form.assessmentMonth);
-    document.getElementById('success-result').classList.remove('hidden');
-    resetForm();
-    resetMonthPicker('mp-home');
-    setStatus(document.getElementById('status-msg'), '', '');
-    document.getElementById('btn-start').classList.add('hidden');
-    showPage('page-success');
-  } catch (e) {
-    showError(e);
     btns.forEach(b => setBusy(b, false));
+    showSubmitted(form.assessmentMonth, res);
+  } catch (e) {
+    btns.forEach(b => setBusy(b, false));
+    await handleSubmitError(e, form.assessmentMonth);
   }
 }
 
@@ -1607,21 +1619,49 @@ async function submitDataV2() {
   const btn = document.getElementById('v2-submit');
   setBusy(btn, true, '⏳ Đang gửi...');
   try {
+    const month = state.v2Month;
     const res = await api('saveData', { form });
-    markSubmitted(state.v2Month, res.score, res.grade);
-    document.getElementById('res-score').textContent = res.score;
-    document.getElementById('res-grade').textContent = res.grade;
-    document.getElementById('res-month').textContent = monthLabel(state.v2Month);
-    document.getElementById('success-result').classList.remove('hidden');
-    resetFormV2();
-    resetMonthPicker('mp-home');
-    setStatus(document.getElementById('status-msg'), '', '');
-    document.getElementById('btn-start').classList.add('hidden');
-    showPage('page-success');
-  } catch (e) {
-    showError(e);
     setBusy(btn, false);
+    showSubmitted(month, res);
+  } catch (e) {
+    setBusy(btn, false);
+    await handleSubmitError(e, state.v2Month);
   }
+}
+
+// Sau khi máy chủ xác nhận đã lưu: lỗi hiển thị (nếu có) không được làm người dùng tưởng chưa gửi
+function showSubmitted(month, res) {
+  try { markSubmitted(month, res && res.score, res && res.grade); } catch (e) { cache.history = null; }
+  document.getElementById('res-score').textContent = res && res.score !== undefined ? res.score : '';
+  document.getElementById('res-grade').textContent = res && res.grade ? res.grade : '';
+  document.getElementById('res-month').textContent = monthLabel(month);
+  document.getElementById('success-result').classList.remove('hidden');
+  try { resetForm(); } catch (e) {}
+  try { resetFormV2(); } catch (e) {}
+  resetMonthPicker('mp-home');
+  setStatus(document.getElementById('status-msg'), '', '');
+  document.getElementById('btn-start').classList.add('hidden');
+  showPage('page-success');
+}
+
+/**
+ * Gửi phiếu bị lỗi đường truyền / quá thời gian / báo trùng: có thể phiếu ĐÃ được lưu.
+ * Kiểm tra lại lịch sử trước khi báo lỗi để người dùng không gửi lại hay hoang mang.
+ */
+async function handleSubmitError(e, month) {
+  if (['TIMEOUT', 'NETWORK', 'UPSTREAM', 'DUPLICATE', 'BUSY'].indexOf(e && e.code) >= 0) {
+    try {
+      const hist = await getHistory(true);
+      const row = hist.find(r => r.thang === month);
+      if (row) {
+        showSubmitted(month, { score: row.tongDiem, grade: row.xepLoai });
+        alert('✅ Phiếu tháng ' + monthLabel(month) + ' đã được ghi nhận trên hệ thống.');
+        return true;
+      }
+    } catch (_) { /* vẫn báo lỗi gốc bên dưới */ }
+  }
+  showError(e);
+  return false;
 }
 
 // ============================================================
@@ -1642,7 +1682,7 @@ async function loadHistory() {
   const wrap = document.getElementById('history-table-wrap');
   const n = nextSeq('history');
   // Hiện ngay dữ liệu đã có, rồi cập nhật lại từ máy chủ
-  if (cache.history) renderHistory(cache.history);
+  if (Array.isArray(cache.history)) renderHistory(cache.history);
   else wrap.innerHTML = '<div class="empty-state">⏳ Đang tải...</div>';
   try {
     const data = await getHistory(true);

@@ -162,6 +162,13 @@ Mỗi lần đăng nhập, sai mã, gửi/gửi lại OTP, sai OTP… đều đ�
 - Có thể đăng nhập bằng CCCD mất số 0 ở đầu (do Sheets lưu dạng số).
 - Tải lại trang không bị đăng xuất (phiên lưu trong tab trình duyệt).
 
+## Độ ổn định (bản 2026.10.17)
+
+- **Chân trang ghi phiên bản** (vd. `giảng viên · phiên bản 2026.10.17`) — nhìn là biết Worker nào đang chạy bản nào.
+- **Proxy `src/api.js`** không bao giờ đổi lệnh gửi (POST) thành lệnh xem (GET) khi Google chuyển hướng; phản hồi lạ của Google bị chặn lại thay vì chuyển cho giao diện. Đây là nguyên nhân các lỗi `reading 'hoTen'` và `cache.history.filter is not a function` ở bản cũ.
+- **Giao diện** kiểm tra kiểu dữ liệu trả về (danh sách phải là danh sách), có hạn chờ 90 giây. Khi gửi phiếu gặp lỗi đường truyền / quá thời gian / báo trùng, app tự kiểm tra lại lịch sử: nếu phiếu đã lưu thì báo "đã được ghi nhận" thay vì báo lỗi.
+- **Khi cập nhật nhiều Worker:** chép đủ `src/api.js` và `public/index.html` của đúng khối; `src/api.js` dùng chung được cho mọi khối.
+
 ## Xử lý sự cố
 
 | Thông báo | Cách xử lý |
