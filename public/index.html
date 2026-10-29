@@ -77,6 +77,19 @@
       border: none; background: none; width: 100%; text-align: left; font-family: inherit;
     }
     .nav-logout:hover { background: rgba(239,68,68,.15); color: #fca5a5; }
+    .nav-switch { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 16px 4px; width: calc(100% - 32px);
+      padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
+      color: white; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .nav-switch:hover { background: rgba(255,255,255,.18); }
+    .unit-switch-link { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--primary); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; font-family: inherit; }
+    .unit-choice { display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 8px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+      background: white; cursor: pointer; font-family: inherit; font-size: 14px; color: var(--gray-800); }
+    .unit-choice:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-light); }
+    .unit-choice.current { border-color: var(--success); background: #f0fdf4; cursor: default; }
+    .sig-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--gray-800); margin-bottom: 6px; cursor: pointer; }
+    .sig-check input { width: 16px; height: 16px; accent-color: var(--primary); }
+    #tccb-modal input[type="text"]:disabled { background: var(--gray-100); color: var(--gray-400); }
+    .unit-choice small { display: block; color: var(--gray-400); font-size: 12px; margin-top: 2px; }
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; }
     .sidebar-overlay.show { display: block; }
     .main-area { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
@@ -139,7 +152,7 @@
     .login-logo .sub { font-size: 0.75rem; color: var(--gray-400); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
     .form-group { margin-bottom: 16px; }
     .form-group label, .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
-    input[type="password"], input[type="text"], input[type="number"], select, textarea {
+    input[type="password"], input[type="text"], input[type="number"], input[type="date"], select, textarea {
       width: 100%; padding: 13px 14px; border: 1.5px solid var(--gray-200);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
       color: var(--gray-800); background: var(--white);
@@ -335,6 +348,7 @@
         <div class="s-user-role" id="s-user-role">--</div>
       </div>
     </div>
+    <button class="nav-switch hidden" id="btn-switch-unit" onclick="showSwitchUnit()">🔄 Chuyển đơn vị</button>
     <nav class="sidebar-nav" id="sidebar-nav"></nav>
     <div class="sidebar-footer">
       <button class="nav-logout" onclick="logout()"><span style="font-size:16px;">⏻</span> Đăng xuất</button>
@@ -360,7 +374,7 @@
           <div class="card-title">📝 Tự đánh giá cá nhân</div>
           <div class="info-box">
             <div class="info-row"><span class="info-label">👤 Họ tên:</span><span class="info-value" id="dsp-name"></span></div>
-            <div class="info-row"><span class="info-label">🏢 Đơn vị:</span><span class="info-value" id="dsp-unit"></span></div>
+            <div class="info-row"><span class="info-label">🏢 Đơn vị:</span><span class="info-value"><span id="dsp-unit"></span><button type="button" class="unit-switch-link hidden" id="lnk-switch-unit" onclick="showSwitchUnit()">Đổi đơn vị</button></span></div>
           </div>
           <div class="form-group">
             <span class="form-label">📅 Chọn tháng đánh giá</span>
@@ -590,7 +604,7 @@
 
             <div class="aplus-box hidden" id="v2-aplus">
               <div class="ap-title">⭐ Xét mức A+ (Hoàn thành xuất sắc nhiệm vụ)</div>
-              
+              <div style="font-size:12.5px;color:var(--gray-600);margin-bottom:6px;line-height:1.5;">Mức A+ yêu cầu có ít nhất 30% nhiệm vụ hoàn thành vượt mức yêu cầu. “Vượt mức yêu cầu” phải được xác định theo tiêu chí được giao trước hoặc có căn cứ xác nhận về việc vượt yêu cầu về khối lượng, chất lượng, tiến độ và/hoặc hiệu quả; không xác định chỉ trên cơ sở nhận xét định tính.</div>
               <div class="wl-wrap" id="v2-evidence-wrap">
                 <label for="v2-evidence">📝 Căn cứ xác nhận vượt mức (bắt buộc):</label>
                 <textarea id="v2-evidence" name="canCuVuot" rows="4" placeholder="Nêu rõ nhiệm vụ vượt mức về khối lượng, chất lượng, tiến độ và/hoặc hiệu quả; căn cứ xác nhận…"></textarea>
@@ -608,7 +622,7 @@
 
     <footer>
       <p><b>PHIẾU TỰ ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC TRỰC TUYẾN</b></p>
-      <p>© 2026 Phòng Tổ chức cán bộ · <span style="opacity:.7">giảng viên · phiên bản 2026.10.17</span></p>
+      <p>© 2026 Phòng Tổ chức cán bộ · <span style="opacity:.6;">phiên bản 2026.10.17</span></p>
     </footer>
   </div>
 </div>
@@ -657,6 +671,21 @@ const PAGE_LABELS = {
   'page-hr-detail':    { title:'Chi tiết đơn vị', sub:'Danh sách VC-NLĐ theo đơn vị' }
 };
 
+const APP_VERSION = '2026.10.17';
+window.addEventListener('error', ev => showErrBanner(ev.message));
+window.addEventListener('unhandledrejection', ev => showErrBanner(ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)));
+function showErrBanner(msg) {
+  if (!msg) return;
+  let b = document.getElementById('err-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'err-banner';
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:100000;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.15);';
+    b.onclick = () => b.remove();
+    document.body.appendChild(b);
+  }
+  b.textContent = '⚠️ Lỗi trang (v' + APP_VERSION + '): ' + msg + ' — bấm để ẩn. Hãy tải lại trang (Ctrl+F5); nếu lặp lại, chụp màn hình gửi Phòng TCCB.';
+}
 const state = { token:null, user:null, pendingMsnv:null, hrMonth:'', mgrMonth:'' };
 const reqSeq = {};   // chống kết quả trả về lộn thứ tự khi đổi tháng liên tục
 
@@ -692,8 +721,42 @@ function setBusy(btn, busy, busyText) {
 function setStatus(el, cls, html) { el.className = 'status-msg' + (cls ? ' ' + cls : ''); el.innerHTML = html || ''; }
 function showError(err) { if (!err || !err.handled) alert('⚠️ ' + (err && err.message ? err.message : err)); }
 
-// Các thao tác phải trả về danh sách — nếu không phải danh sách là máy chủ trả sai, không được dùng
-const LIST_ACTIONS = ['getUserHistory', 'getStaffData', 'getAllStaffData'];
+// ------------------------------------------------------------
+// Kiểm tra dữ liệu máy chủ trả về + phiên bản Apps Script
+// ------------------------------------------------------------
+const API_REQUIRED = '2026.10.17';       // Code.gs phải có API_VERSION ≥ số này
+const isUser = u => !!u && typeof u === 'object' && typeof u.hoTen === 'string' && typeof u.role === 'string';
+const SHAPE = {
+  login:      d => !!d && (d.multiUnit ? Array.isArray(d.donViList) : d.otpRequired ? !!d.otpId : (!!d.token && isUser(d.user))),
+  verifyOtp:  d => !!d && !!d.token && isUser(d.user),
+  switchUnit: d => !!d && !!d.token && isUser(d.user),
+  resendOtp:  d => !!d && typeof d.expiresIn === 'number',
+  checkDoubleEntry: d => typeof d === 'boolean',
+  saveData:   d => !!d && d.grade !== undefined,
+  getUserHistory: Array.isArray,
+  getStaffData:   Array.isArray,
+  getAllStaffData: Array.isArray,
+  updateManagerEvaluations: d => !!d && typeof d.saved === 'number',
+  getExportTCCB: d => !!d && Array.isArray(d.rows),
+  exportReport:  d => !!d && !!d.sheetName,
+  exportCSVData: d => !!d && !!d.base64,
+  exportExcelData: d => !!d && !!d.base64
+};
+let apiVerWarned = false;
+function checkApiVersion(v) {
+  if (apiVerWarned || (v && String(v) >= API_REQUIRED)) return;
+  apiVerWarned = true;
+  let b = document.getElementById('ver-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'ver-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100001;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;padding:8px 14px;font-size:12.5px;text-align:center;';
+    document.body.appendChild(b);
+  }
+  b.textContent = `⚠️ Apps Script của trang này đang chạy bản cũ (${v ? 'phiên bản ' + v : 'chưa có số phiên bản'}; cần ≥ ${API_REQUIRED}). ` +
+                  'Quản trị viên vui lòng dán Code.gs mới vào Apps Script và tạo Phiên bản mới. Một số chức năng có thể không chạy đúng.';
+}
+
 const API_TIMEOUT_MS = 90 * 1000;
 function apiError(message, code) { const e = new Error(message); e.code = code; return e; }
 
@@ -710,8 +773,7 @@ async function api(action, args) {
     });
   } catch (e) {
     clearTimeout(timer);
-    if (e && e.name === 'AbortError')
-      throw apiError('Máy chủ phản hồi quá lâu. Vui lòng thử lại sau ít phút.', 'TIMEOUT');
+    if (e && e.name === 'AbortError') throw apiError('Máy chủ phản hồi quá lâu. Vui lòng thử lại sau ít phút.', 'TIMEOUT');
     throw apiError('Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.', 'NETWORK');
   }
   let j;
@@ -719,6 +781,7 @@ async function api(action, args) {
   catch (e) { clearTimeout(timer); throw apiError('Máy chủ phản hồi không hợp lệ (HTTP ' + res.status + '). Vui lòng thử lại.', 'UPSTREAM'); }
   clearTimeout(timer);
   if (!j || typeof j !== 'object') throw apiError('Máy chủ phản hồi không hợp lệ. Vui lòng thử lại.', 'UPSTREAM');
+  checkApiVersion(j.v);
   if (!j.success) {
     const err = new Error(j.message || 'Lỗi không xác định');
     err.code = j.code;
@@ -729,13 +792,56 @@ async function api(action, args) {
     }
     throw err;
   }
-  const d = j.data;
-  // Phản hồi của doGet (Google chuyển hướng sai) hoặc sai kiểu → coi là lỗi tạm thời
-  if (d && typeof d === 'object' && !Array.isArray(d) && d.service && !('user' in d))
-    throw apiError('Máy chủ Google đang phản hồi bất thường. Vui lòng thử lại sau ít giây.', 'UPSTREAM');
-  if (LIST_ACTIONS.indexOf(action) >= 0 && !Array.isArray(d))
-    throw apiError('Máy chủ trả dữ liệu không hợp lệ. Vui lòng thử lại sau ít giây.', 'UPSTREAM');
-  return d;
+  const ok = SHAPE[action];
+  if (ok && !ok(j.data)) {
+    console.warn('Dữ liệu không đúng dạng cho', action, j.data);
+    const err = new Error(action === 'saveData'
+      ? 'Máy chủ phản hồi không đúng dạng sau khi gửi phiếu. Phiếu có thể ĐÃ được lưu — vui lòng xem mục "Kết quả & lịch sử" trước khi gửi lại. Nếu lỗi lặp lại, báo Phòng TCCB cập nhật Apps Script.'
+      : `Máy chủ trả dữ liệu không đúng dạng cho thao tác "${action}". Có thể Apps Script của trang này chưa được cập nhật cùng phiên bản giao diện — vui lòng báo Phòng TCCB.`);
+    err.code = 'SHAPE';
+    throw err;
+  }
+  return j.data;
+}
+
+/** Sau khi gửi phiếu: hiện kết quả; lỗi giao diện ở bước này không được che mất việc đã lưu */
+function afterSaved(month, res, resetFn) {
+  try { markSubmitted(month, res.score, res.grade); } catch (e) { cache.history = null; }
+  try {
+    document.getElementById('res-score').textContent = res.score;
+    document.getElementById('res-grade').textContent = res.grade;
+    document.getElementById('res-month').textContent = monthLabel(month);
+    document.getElementById('success-result').classList.remove('hidden');
+    resetFn();
+    resetMonthPicker('mp-home');
+    setStatus(document.getElementById('status-msg'), '', '');
+    document.getElementById('btn-start').classList.add('hidden');
+  } catch (e) { console.error(e); }
+  showPage('page-success');
+}
+/** Lỗi khi gửi phiếu: gửi trùng / phản hồi lạ → đưa về lịch sử để người dùng tự kiểm tra */
+async function onSaveError(e, resetFn, month) {
+  // Lỗi đường truyền / quá thời gian / phản hồi lỗi: phiếu có thể ĐÃ được lưu → kiểm tra lịch sử
+  if (month && e && ['TIMEOUT', 'NETWORK', 'UPSTREAM', 'BUSY'].indexOf(e.code) >= 0) {
+    try {
+      const hist = await getHistory(true);
+      const row = Array.isArray(hist) ? hist.find(r => r.thang === month) : null;
+      if (row) {
+        afterSaved(month, { score: row.tongDiem, grade: row.xepLoai }, resetFn);
+        alert('✅ Phiếu tháng ' + monthLabel(month) + ' đã được ghi nhận trên hệ thống.');
+        return true;
+      }
+    } catch (_) { /* rơi xuống báo lỗi gốc */ }
+  }
+  showError(e);
+  if (e && (e.code === 'DUPLICATE' || e.code === 'SHAPE')) {
+    cache.history = null; cache.historyAt = 0;
+    try { resetFn(); } catch (x) {}
+    document.getElementById('success-result').classList.add('hidden');
+    showPage('page-success');
+    return true;
+  }
+  return false;
 }
 
 function downloadBase64(b64, fileName, mime) {
@@ -916,7 +1022,7 @@ async function handleVerify(ev) {
 }
 
 function handleLoginResult(res) {
-  if (res.otpRequired) showOtpModal(res);
+  if (res && res.otpRequired) showOtpModal(res);
   else finishLogin(res);
 }
 
@@ -1032,7 +1138,8 @@ async function submitOtp() {
   try {
     const res = await api('verifyOtp', { otpId: otp.id, code, device: await getDeviceInfo() });
     closeOtpModal();
-    finishLogin(res);
+    try { finishLogin(res); }
+    catch (e2) { alert('⚠️ ' + e2.message); logout(); }
   } catch (e) {
     if (e.code === 'OTP_EXPIRED') { closeOtpModal(); alert('⚠️ ' + e.message); }
     else { setStatus(st, 'done', esc(e.message)); input.value = ''; input.focus(); }
@@ -1063,21 +1170,79 @@ async function resendOtp() {
   }
 }
 
-function finishLogin(res) {
-  if (!res || !res.token || !res.user || !res.user.hoTen) {
-    alert('⚠️ Máy chủ trả về dữ liệu đăng nhập không đầy đủ. Vui lòng báo quản trị viên kiểm tra APPS_SCRIPT_URL và bản deploy Apps Script.');
-    return;
+// ============================================================
+// CHUYỂN ĐƠN VỊ (người làm việc ở nhiều đơn vị) — không cần đăng xuất
+// ============================================================
+const ROLE_SUFFIX = { manager: ' (Trưởng đơn vị)', hr: ' (Tổ chức cán bộ)', staff: '' };
+function showSwitchUnit() {
+  closeSidebar();
+  const u = state.user;
+  let modal = document.getElementById('switch-unit-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'switch-unit-modal';
+    modal.className = 'modal-backdrop';
+    document.body.appendChild(modal);
   }
+  const list = (state.units || []).map((d, i) => {
+    const cur = d.donVi === u.donVi && d.role === u.role;
+    return `<button class="unit-choice${cur ? ' current' : ''}" ${cur ? 'disabled' : `onclick="doSwitchUnit(${i}, this)"`}>
+      ${cur ? '✅ ' : '🏢 '}${esc(d.donVi)}${ROLE_SUFFIX[d.role] || ''}<small>${cur ? 'Đang làm việc' : 'Bấm để chuyển sang'}</small></button>`;
+  }).join('');
+  modal.innerHTML = `<div class="modal-box" style="text-align:left;">
+    <h3 style="color:var(--navy);margin:0 0 6px;font-size:1.05rem;text-align:center;">🔄 Chuyển đơn vị</h3>
+    <p style="color:var(--gray-600);font-size:13px;margin-bottom:14px;text-align:center;">Chọn đơn vị muốn thao tác. Mỗi đơn vị đánh giá riêng.</p>
+    ${list}
+    <button class="btn btn-gray" onclick="document.getElementById('switch-unit-modal').classList.add('hidden')">Đóng</button>
+  </div>`;
+  modal.classList.remove('hidden');
+}
+
+async function doSwitchUnit(i, btn) {
+  const d = state.units[i];
+  if (!d) return;
+  document.querySelectorAll('#switch-unit-modal .unit-choice').forEach(b => { b.disabled = true; });
+  btn.innerHTML = '⏳ Đang chuyển sang ' + esc(d.donVi) + '...';
+  try {
+    const res = await api('switchUnit', { donVi: d.donVi, role: d.role, device: await getDeviceInfo() });
+    saveSession(res);
+    location.reload();   // tải lại để mọi trang, tháng đã chọn, bộ nhớ tạm… về đúng đơn vị mới
+  } catch (e) {
+    showError(e);
+    showSwitchUnit();
+  }
+}
+
+function saveSession(res) {
   state.token = res.token;
   state.user = res.user;
+  state.units = res.units || state.units || [];
   store.set('vcnld_token', res.token);
   store.set('vcnld_user', JSON.stringify(res.user));
+  store.set('vcnld_units', JSON.stringify(state.units));
+}
+
+function finishLogin(res) {
+  if (!res || !res.token || !res.user || typeof res.user.hoTen !== 'string')
+    throw new Error('Máy chủ trả về dữ liệu đăng nhập không đầy đủ. Vui lòng tải lại trang (Ctrl+F5) và đăng nhập lại.');
+  saveSession(res);
   document.getElementById('cccd_input').value = '';
   enterApp();
 }
 
 function enterApp() {
+  try { enterAppInner(); }
+  catch (e) {
+    console.error(e);
+    alert('⚠️ Không vào được hệ thống: ' + (e && e.message ? e.message : e) +
+          '\n\nVui lòng tải lại trang (Ctrl+F5) rồi đăng nhập lại. Nếu vẫn lỗi, chụp màn hình thông báo này gửi Phòng TCCB.');
+    logout();
+  }
+}
+
+function enterAppInner() {
   const u = state.user;
+  if (!u || typeof u.hoTen !== 'string') throw new Error('Phiên đăng nhập không hợp lệ');
   document.getElementById('login-page').classList.add('hidden');
   document.getElementById('app-shell').classList.remove('hidden');
   const last = (u.hoTen || '?').trim().split(/\s+/).pop();
@@ -1087,6 +1252,9 @@ function enterApp() {
   document.getElementById('dsp-name').textContent = u.hoTen;
   document.getElementById('dsp-unit').textContent = u.donVi;
   document.getElementById('mgr-unit-info').textContent = u.donVi;
+  const multi = (state.units || []).length > 1;
+  document.getElementById('btn-switch-unit').classList.toggle('hidden', !multi);
+  document.getElementById('lnk-switch-unit').classList.toggle('hidden', !multi);
   buildNav(u.role);
   showPage(DEFAULT_PAGE[u.role]);
   getHistory().catch(() => {});   // tải trước để chọn tháng hiện kết quả ngay
@@ -1095,6 +1263,7 @@ function enterApp() {
 function logout() {
   store.del('vcnld_token');
   store.del('vcnld_user');
+  store.del('vcnld_units');
   location.reload();
 }
 
@@ -1114,7 +1283,11 @@ function getHistory(force) {
   if (fresh && !force) return Promise.resolve(cache.history);
   if (cache.historyP && !force) return cache.historyP;
   const p = api('getUserHistory').then(d => {
-    if (!Array.isArray(d)) throw apiError('Máy chủ trả dữ liệu không hợp lệ. Vui lòng thử lại.', 'UPSTREAM');
+    if (!Array.isArray(d)) {
+      console.warn('getUserHistory trả về dữ liệu không phải danh sách:', d);
+      if (cache.historyP === p) cache.historyP = null;
+      throw new Error('Dữ liệu lịch sử không hợp lệ');
+    }
     if (cache.historyP === p) { cache.history = d; cache.historyAt = Date.now(); cache.historyP = null; }
     return d;
   }, e => { if (cache.historyP === p) cache.historyP = null; throw e; });
@@ -1124,7 +1297,7 @@ function getHistory(force) {
 function markSubmitted(month, score, grade) {
   if (!Array.isArray(cache.history)) { cache.history = null; cache.historyAt = 0; return; }
   cache.history = [{ thang: month, donVi: state.user.donVi, tongDiem: score, xepLoai: grade, sepLoai: '' }]
-    .concat(cache.history.filter(r => r.thang !== month));
+    .concat(cache.history.filter(r => !(r.thang === month && r.donVi === state.user.donVi)));
   cache.historyAt = Date.now();
 }
 
@@ -1151,10 +1324,10 @@ async function onHomeMonth(month) {
   if (!cache.history) setStatus(msg, 'checking', '🔍 Đang kiểm tra...');
   try {
     let done;
-    try { done = (await getHistory()).some(r => r.thang === month); }
+    try { done = (await getHistory()).some(r => r.thang === month && r.donVi === state.user.donVi); }
     catch (e) { done = await api('checkDoubleEntry', { month }); }   // dự phòng
     if (!isLatest('home', n)) return;
-    if (done) setStatus(msg, 'done', `❌ Bạn đã gửi đánh giá tháng ${monthLabel(month)} rồi!`);
+    if (done) setStatus(msg, 'done', `❌ Bạn đã gửi đánh giá tháng ${monthLabel(month)}${(state.units || []).length > 1 ? ' tại ' + esc(state.user.donVi) : ''} rồi!`);
     else { setStatus(msg, 'ready', `✅ Bạn chưa đánh giá tháng ${monthLabel(month)}. Mời bạn bắt đầu.`); btn.classList.remove('hidden'); }
   } catch (e) {
     if (isLatest('home', n)) setStatus(msg, 'warn', '⚠️ ' + esc(e.message));
@@ -1288,11 +1461,9 @@ async function submitData() {
   btns.forEach(b => setBusy(b, true, '⏳ Đang gửi...'));
   try {
     const res = await api('saveData', { form });
-    btns.forEach(b => setBusy(b, false));
-    showSubmitted(form.assessmentMonth, res);
+    afterSaved(form.assessmentMonth, res, resetForm);
   } catch (e) {
-    btns.forEach(b => setBusy(b, false));
-    await handleSubmitError(e, form.assessmentMonth);
+    if (!(await onSaveError(e, resetForm, form.assessmentMonth))) btns.forEach(b => setBusy(b, false));
   }
 }
 
@@ -1489,7 +1660,7 @@ function bindWordLimit(taId, countId, errId) {
   ta._wlUpdate = update;
 }
 
-/** Xếp loại chỉ theo tổng điểm — giống hệt gradeV2_ ở backend (không hạ mức theo phần II) */
+/** Xếp loại chỉ theo tổng điểm — giống hệt gradeV2_ ở backend (không hạ loại theo phần II) */
 function gradeV2(total, _ii1, _ii2, _ii3) {
   const g = total >= 90 ? 'A+' : total >= 70 ? 'A' : total >= 50 ? 'B' : 'C';
   return { grade: g, scoreGrade: g, reasons: [] };
@@ -1619,49 +1790,11 @@ async function submitDataV2() {
   const btn = document.getElementById('v2-submit');
   setBusy(btn, true, '⏳ Đang gửi...');
   try {
-    const month = state.v2Month;
     const res = await api('saveData', { form });
-    setBusy(btn, false);
-    showSubmitted(month, res);
+    afterSaved(state.v2Month, res, resetFormV2);
   } catch (e) {
-    setBusy(btn, false);
-    await handleSubmitError(e, state.v2Month);
+    if (!(await onSaveError(e, resetFormV2, state.v2Month))) setBusy(btn, false);
   }
-}
-
-// Sau khi máy chủ xác nhận đã lưu: lỗi hiển thị (nếu có) không được làm người dùng tưởng chưa gửi
-function showSubmitted(month, res) {
-  try { markSubmitted(month, res && res.score, res && res.grade); } catch (e) { cache.history = null; }
-  document.getElementById('res-score').textContent = res && res.score !== undefined ? res.score : '';
-  document.getElementById('res-grade').textContent = res && res.grade ? res.grade : '';
-  document.getElementById('res-month').textContent = monthLabel(month);
-  document.getElementById('success-result').classList.remove('hidden');
-  try { resetForm(); } catch (e) {}
-  try { resetFormV2(); } catch (e) {}
-  resetMonthPicker('mp-home');
-  setStatus(document.getElementById('status-msg'), '', '');
-  document.getElementById('btn-start').classList.add('hidden');
-  showPage('page-success');
-}
-
-/**
- * Gửi phiếu bị lỗi đường truyền / quá thời gian / báo trùng: có thể phiếu ĐÃ được lưu.
- * Kiểm tra lại lịch sử trước khi báo lỗi để người dùng không gửi lại hay hoang mang.
- */
-async function handleSubmitError(e, month) {
-  if (['TIMEOUT', 'NETWORK', 'UPSTREAM', 'DUPLICATE', 'BUSY'].indexOf(e && e.code) >= 0) {
-    try {
-      const hist = await getHistory(true);
-      const row = hist.find(r => r.thang === month);
-      if (row) {
-        showSubmitted(month, { score: row.tongDiem, grade: row.xepLoai });
-        alert('✅ Phiếu tháng ' + monthLabel(month) + ' đã được ghi nhận trên hệ thống.');
-        return true;
-      }
-    } catch (_) { /* vẫn báo lỗi gốc bên dưới */ }
-  }
-  showError(e);
-  return false;
 }
 
 // ============================================================
@@ -1669,6 +1802,7 @@ async function handleSubmitError(e, month) {
 // ============================================================
 function renderHistory(data) {
   const wrap = document.getElementById('history-table-wrap');
+  if (!Array.isArray(data)) data = [];
   if (!data.length) { wrap.innerHTML = '<div class="empty-state">Chưa có lịch sử đánh giá nào.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table class="history-table">
     <thead><tr><th>Tháng</th><th>Đơn vị</th><th>Tổng điểm</th><th>Tự xếp loại</th><th>Trưởng ĐV xếp loại</th></tr></thead>
@@ -1682,7 +1816,7 @@ async function loadHistory() {
   const wrap = document.getElementById('history-table-wrap');
   const n = nextSeq('history');
   // Hiện ngay dữ liệu đã có, rồi cập nhật lại từ máy chủ
-  if (Array.isArray(cache.history)) renderHistory(cache.history);
+  if (cache.history) renderHistory(cache.history);
   else wrap.innerHTML = '<div class="empty-state">⏳ Đang tải...</div>';
   try {
     const data = await getHistory(true);
@@ -1977,7 +2111,8 @@ function renderHRDashboard(data, month) {
       <button class="btn btn-success" id="hr-export-btn" onclick="exportToSheet()">📊 Xuất Google Sheets</button>
       <button class="btn btn-primary" id="hr-export-excel-btn" onclick="exportToExcel()">📗 Xuất Excel (.xlsx)</button>
       <button class="btn btn-gray" id="hr-export-csv-btn" onclick="exportToCSV()">📄 Xuất CSV</button>
-    </div>`;
+    </div>
+    <button class="btn btn-primary" id="hr-export-tccb-btn" onclick="showTCCBExport()" style="margin-top:12px;max-width:640px;background:#0f2557;">🏛️ Bảng tổng hợp chi thu nhập tăng thêm (mẫu TCCB, .xlsx)</button>`;
 }
 
 function renderHRDetail(data) {
@@ -2027,6 +2162,236 @@ function exportToCSV() {
 }
 
 // ============================================================
+// BẢNG TỔNG HỢP CHI THU NHẬP TĂNG THÊM — xuất .xlsx đúng mẫu Phòng TCCB
+// Dữ liệu lấy từ máy chủ (getExportTCCB), file dựng ngay trên trình duyệt bằng ExcelJS.
+// ============================================================
+const EXCELJS_SRC = [
+  'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+  'https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js'
+];
+const TCCB_DEFAULTS = { phoTP: 'Lâm Quốc Việt', hieuTruong: 'Trần Diệp Tuấn', scope: 'A', lapOn: true, tpOn: true, htOn: true };
+
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = ok; s.onerror = () => { s.remove(); fail(new Error('load ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+async function ensureExcelJS() {
+  if (window.ExcelJS) return;
+  for (const src of EXCELJS_SRC) {
+    try { await loadScript(src); if (window.ExcelJS) return; } catch (e) { /* thử nguồn khác */ }
+  }
+  throw new Error('Không tải được thư viện tạo Excel. Vui lòng kiểm tra mạng và thử lại.');
+}
+
+function tccbPrefs() {
+  let p = {};
+  try { p = JSON.parse(localStorage.getItem('tccb_export') || '{}'); } catch (e) {}
+  return Object.assign({}, TCCB_DEFAULTS, { nguoiLap: state.user ? state.user.hoTen : '' }, p);
+}
+function todayISO() {
+  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}
+
+function showTCCBExport() {
+  if (!state.hrMonth) return alert('Vui lòng chọn tháng trước!');
+  const p = tccbPrefs();
+  let modal = document.getElementById('tccb-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'tccb-modal';
+    modal.className = 'modal-backdrop';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div class="modal-box" style="text-align:left;max-width:460px;">
+    <h3 style="color:var(--navy);margin:0 0 4px;font-size:1.05rem;text-align:center;">🏛️ Bảng tổng hợp chi thu nhập tăng thêm</h3>
+    <p style="color:var(--gray-600);font-size:13px;margin-bottom:14px;text-align:center;">Tháng <b>${esc(monthLabel(state.hrMonth))}</b> · đúng mẫu Phòng TCCB (.xlsx)</p>
+    <label class="form-label" for="tccb-scope">Danh sách gồm</label>
+    <select id="tccb-scope" style="margin-bottom:12px;">
+      <option value="A"${p.scope === 'A' ? ' selected' : ''}>Mức A — người được TĐV xếp A+ hoặc A</option>
+      <option value="all"${p.scope === 'all' ? ' selected' : ''}>Tất cả người đã nộp phiếu</option>
+    </select>
+    <label class="form-label" for="tccb-date">Ngày lập bảng</label>
+    <input type="date" id="tccb-date" value="${todayISO()}" style="margin-bottom:12px;">
+    <div class="sub-title" style="margin:4px 0 8px;">Khối chữ ký <span style="text-transform:none;font-weight:500;color:var(--gray-400);">(bỏ chọn để không in khối đó)</span></div>
+    ${[['lap', 'Người lập bảng', p.nguoiLap, p.lapOn],
+       ['tp', 'Phòng TCCB (KT. Trưởng phòng – Phó Trưởng phòng)', p.phoTP, p.tpOn],
+       ['ht', 'Hiệu trưởng', p.hieuTruong, p.htOn]].map(([k, label, val, on]) => `
+    <label class="sig-check"><input type="checkbox" id="tccb-${k}-on"${on ? ' checked' : ''} onchange="document.getElementById('tccb-${k}').disabled = !this.checked"> ${label}</label>
+    <input type="text" id="tccb-${k}" value="${esc(val)}"${on ? '' : ' disabled'} style="margin-bottom:12px;">`).join('')}
+    <div id="tccb-status" class="status-msg"></div>
+    <button class="btn btn-primary" id="btn-tccb-go" onclick="runTCCBExport()">📥 Tải file Excel</button>
+    <button class="btn btn-gray" onclick="document.getElementById('tccb-modal').classList.add('hidden')">Đóng</button>
+  </div>`;
+  modal.classList.remove('hidden');
+}
+
+async function runTCCBExport() {
+  const opts = {
+    scope: document.getElementById('tccb-scope').value,
+    date: document.getElementById('tccb-date').value || todayISO(),
+    nguoiLap: document.getElementById('tccb-lap').value.trim(),
+    phoTP: document.getElementById('tccb-tp').value.trim(),
+    hieuTruong: document.getElementById('tccb-ht').value.trim(),
+    lapOn: document.getElementById('tccb-lap-on').checked,
+    tpOn: document.getElementById('tccb-tp-on').checked,
+    htOn: document.getElementById('tccb-ht-on').checked
+  };
+  try {
+    localStorage.setItem('tccb_export', JSON.stringify({ scope: opts.scope, nguoiLap: opts.nguoiLap, phoTP: opts.phoTP, hieuTruong: opts.hieuTruong,
+                                                          lapOn: opts.lapOn, tpOn: opts.tpOn, htOn: opts.htOn }));
+  } catch (e) {}
+  const btn = document.getElementById('btn-tccb-go');
+  const st = document.getElementById('tccb-status');
+  setBusy(btn, true, '⏳ Đang tạo file...');
+  setStatus(st, '', '');
+  try {
+    const [data] = await Promise.all([api('getExportTCCB', { month: state.hrMonth }), ensureExcelJS()]);
+    const r = buildTCCBWorkbook(data, opts);
+    if (!r.count) {
+      setStatus(st, 'warn', opts.scope === 'A'
+        ? `⚠️ Chưa có ai được Trưởng đơn vị xếp A+/A trong tháng ${esc(monthLabel(data.month))}${r.pending ? ` (${r.pending} phiếu chờ TĐV đánh giá)` : ''}.`
+        : `⚠️ Không có dữ liệu tháng ${esc(monthLabel(data.month))}.`);
+      return;
+    }
+    const buf = await r.wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = r.fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setStatus(st, 'ready', `✅ Đã tạo file: ${r.count} người` +
+      (r.pending ? ` · ⚠️ ${r.pending} phiếu chưa được TĐV đánh giá nên chưa có trong danh sách` : ''));
+  } catch (e) {
+    setStatus(st, 'done', '⚠️ ' + esc(e.message));
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+/** Dựng workbook theo đúng bố cục mẫu "Ket_qua_danh_gia_T9.2026.xlsx" */
+function buildTCCBWorkbook(data, opts) {
+  const [mm, yyyy] = data.month.split('-');
+  const m = Number(mm);
+  const all = data.rows || [];
+  const pending = all.filter(r => !r.sepLoai).length;
+  const rows = all.filter(r => opts.scope === 'all' ? true : (r.sepLoai === 'A+' || r.sepLoai === 'A'));
+  const coll = new Intl.Collator('vi');
+  const groups = {};
+  rows.forEach(r => { const g = r.donViLon || 'Chưa xác định đơn vị'; (groups[g] = groups[g] || []).push(r); });
+  const gNames = Object.keys(groups).sort(coll.compare);
+  gNames.forEach(g => groups[g].sort((a, b) => coll.compare(a.boMon, b.boMon) || coll.compare(a.hoTen, b.hoTen)));
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Hệ thống đánh giá VC-NLĐ';
+  const ws = wb.addWorksheet(`T${m}.${yyyy.slice(2)}`, {
+    pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+                 horizontalCentered: true, printTitlesRow: '4:4',
+                 margins: { left: 0.25, right: 0.25, top: 0.71, bottom: 0.5, header: 0.3, footer: 0.3 } }
+  });
+  ws.columns = [5.43, 17.43, 24.71, 15, 23.43, 29, 20.71, 12, 14.71, 31.71, 13, 14.71, 31, 12.29].map(w => ({ width: w }));
+
+  const TNR = (sz, extra) => Object.assign({ name: 'Times New Roman', size: sz }, extra || {});
+  const thin = { style: 'thin' };
+  const box = { top: thin, left: thin, bottom: thin, right: thin };
+  const center = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+  // Dòng 1: tên cơ quan + quốc hiệu, ngày lập
+  ws.mergeCells('A1:E1'); ws.mergeCells('F1:N1'); ws.mergeCells('F2:N2');
+  const [y, mo, d] = opts.date.split('-');
+  ws.getCell('A1').value = { richText: [
+    { text: 'BỘ Y TẾ\n', font: TNR(14) },
+    { text: 'ĐẠI HỌC Y DƯỢC \nTHÀNH PHỐ HỒ CHÍ MINH', font: TNR(14, { bold: true }) }
+  ] };
+  ws.getCell('F1').value = { richText: [
+    { text: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n', font: TNR(14, { bold: true }) },
+    { text: '\n', font: TNR(14) },
+    { text: `Thành phố Hồ Chí Minh, ngày ${d} tháng ${mo} năm ${y}`, font: TNR(14, { italic: true }) }
+  ] };
+  ['A1', 'F1', 'F2'].forEach(c => { ws.getCell(c).alignment = center; ws.getCell(c).font = TNR(14); });
+  ws.getRow(1).height = 71.25;
+  ws.getRow(2).height = 14.25;
+
+  // Dòng 3: tiêu đề
+  ws.mergeCells('A3:N3');
+  const title = opts.scope === 'all' ? 'BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC' : 'BẢNG TỔNG HỢP CHI THU NHẬP TĂNG THÊM MỨC A';
+  const t3 = ws.getCell('A3');
+  t3.value = `${title}\nDựa trên kết quả đánh giá Giảng viên, Nghiên cứu viên, Trợ giảng\nTháng ${m} năm ${yyyy}`;
+  t3.font = TNR(16, { bold: true }); t3.alignment = center; t3.border = { bottom: thin };
+  ws.getRow(3).height = 80.25;
+
+  // Dòng 4: tiêu đề cột
+  const heads = ['STT', 'MANV', 'Họ và tên', 'CCCD', 'Chức danh', 'Bộ môn', 'Đơn vị', 'Điểm tự đánh giá', 'Tự đánh giá',
+                 'Ý kiến của cá nhân', 'Điểm Trưởng ĐV phê duyệt', 'Trưởng ĐV phê duyệt', 'Ý kiến của Trưởng đơn vị', 'Hiệu trưởng \nphê duyệt'];
+  const hr = ws.getRow(4);
+  heads.forEach((h, i) => { const c = hr.getCell(i + 1); c.value = h; c.font = TNR(12, { bold: true }); c.alignment = center; c.border = box; });
+  hr.height = 47.25;
+
+  // Ước lượng chiều cao dòng theo độ dài chữ ở các cột hẹp
+  const lines = (txt, width) => String(txt || '').split('\n')
+    .reduce((n, part) => n + Math.max(1, Math.ceil(part.length / Math.max(1, width * 0.9))), 0);
+  const num = v => (v === '' || v === null || v === undefined) ? null : Number(v);
+
+  let r = 5, stt = 0;
+  gNames.forEach(g => {
+    const row = ws.getRow(r);
+    for (let c = 1; c <= 14; c++) row.getCell(c).border = box;
+    const gc = row.getCell(1);
+    gc.value = g; gc.font = TNR(12, { bold: true }); gc.alignment = { horizontal: 'left', vertical: 'top' };
+    row.height = 27.75;
+    r++;
+    groups[g].forEach(it => {
+      stt++;
+      const row = ws.getRow(r);
+      const vals = [stt, String(it.msnv || ''), it.hoTen, { formula: `B${r}`, result: String(it.msnv || '') }, it.chucDanh, it.boMon, it.donViLon,
+                    num(it.tongDiem), it.xepLoai, it.yKien || null, num(it.sepDiem), it.sepLoai, it.sepGhiChu || null, it.sepLoai];
+      vals.forEach((v, i) => {
+        const c = row.getCell(i + 1);
+        c.value = v;
+        c.font = TNR(12);
+        c.border = box;
+        const centered = [7, 8, 10, 11, 13].includes(i);
+        c.alignment = { horizontal: centered ? 'center' : 'left', vertical: 'top', wrapText: true };
+      });
+      row.getCell(2).numFmt = '@';
+      row.getCell(4).numFmt = '@';
+      const n = Math.max(2, lines(it.yKien, 31.7), lines(it.sepGhiChu, 31), lines(it.hoTen, 24.7), lines(it.chucDanh, 23.4), lines(it.boMon, 29));
+      row.height = Math.min(409, Math.max(31.5, n * 16 + 4));
+      r++;
+    });
+  });
+
+  // Chữ ký — chỉ in các khối được chọn (vị trí giữ nguyên như mẫu)
+  const blocks = [
+    { on: opts.lapOn !== false, cols: 'C:E', title: 'NGƯỜI LẬP BẢNG', name: opts.nguoiLap },
+    { on: opts.tpOn !== false,  cols: 'G:J', title: 'PHÒNG TỔ CHỨC CÁN BỘ\nKT. TRƯỞNG PHÒNG\nPHÓ TRƯỞNG PHÒNG', name: opts.phoTP },
+    { on: opts.htOn !== false,  cols: 'L:N', title: 'HIỆU TRƯỞNG', name: opts.hieuTruong }
+  ].filter(b => b.on);
+  if (blocks.length) {
+    const sig = (row, height, key) => {
+      blocks.forEach(b => {
+        const [c1, c2] = b.cols.split(':');
+        ws.mergeCells(`${c1}${row}:${c2}${row}`);
+        const c = ws.getCell(`${c1}${row}`);
+        c.value = b[key] || null; c.font = TNR(14, { bold: true }); c.alignment = center;
+      });
+      ws.getRow(row).height = height;
+    };
+    sig(r, 83.25, 'title');
+    for (let k = 1; k <= 4; k++) ws.getRow(r + k).height = 18.75;
+    sig(r + 5, 18.75, 'name');
+  }
+
+  const fileName = (opts.scope === 'all' ? 'Bang_tong_hop_ket_qua_danh_gia_' : 'Bang_tong_hop_thu_nhap_tang_them_') + `T${m}.${yyyy}.xlsx`;
+  return { wb, fileName, count: stt, pending };
+}
+
+
+// ============================================================
 // KHỞI ĐỘNG
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -2045,9 +2410,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const token = store.get('vcnld_token'), user = store.get('vcnld_user');
   if (token && user) {
     try {
-      const u = JSON.parse(user);
-      if (!u || !u.hoTen) throw new Error('bad session');
-      state.token = token; state.user = u; enterApp();
+      state.token = token; state.user = JSON.parse(user);
+      try { state.units = JSON.parse(store.get('vcnld_units') || '[]'); } catch (e) { state.units = []; }
+      enterApp();
     }
     catch (e) { logout(); }
   }
