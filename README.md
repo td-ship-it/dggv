@@ -1,6 +1,6 @@
 # Phiếu tự đánh giá VC-NLĐ — Đại học Y Dược TP. HCM
 
-Web app đánh giá hiệu quả công việc hằng tháng cho giảng viên, nghiên cứu viên, trợ giảng.
+Web app đánh giá hiệu quả công việc hằng tháng cho VC-NLĐ khối hành chính, hỗ trợ, phục vụ.
 
 ```
 Trình duyệt ──► Cloudflare Worker (src/worker.js)
@@ -74,6 +74,30 @@ git push -u origin main
 
 Từ đó mỗi lần `git push` lên nhánh `main`, Cloudflare tự triển khai lại. `wrangler.toml` có `keep_vars = true` nên các biến đặt trên dashboard không bị xóa khi deploy.
 
+### Nhiều Worker — mỗi Worker một thư mục
+
+Mỗi Worker nối vào thư mục riêng của nó trên GitHub; mọi thư mục có **cùng code**, chỉ khác `wrangler.toml`:
+
+- **Worker con** (`ttgdyh`, `tv`, …): `name = "<tên Worker>"` và `[triggers] crons = []` — **không có lịch riêng**.
+- **Worker `tccb`** (chính): là Worker **duy nhất có lịch**, kèm các khối `[[services]] WARM_<tên>` trỏ tới từng Worker con.
+
+Lý do: gói Cloudflare miễn phí chỉ cho **5 lịch (Cron) cho cả tài khoản**; 25 Worker mỗi cái một lịch sẽ deploy lỗi. Nay cứ 5 phút trong giờ làm việc, `tccb` đánh thức Apps Script của mình **và của mọi Worker con** (kết nối nội bộ Cloudflare, không mở ra Internet). Một Worker con lỗi hay chưa tồn tại không làm hỏng việc đánh thức các Worker khác.
+
+**Cập nhật code:** chép `apps-script/`, `public/`, `src/`, `README.md` vào thư mục của từng Worker. `wrangler.toml` của mỗi thư mục chỉ cần thay một lần (bản trong gói tải về đã đúng tên).
+
+**Thêm Worker mới tên `abc`:**
+1. Tạo Worker `abc` trên Cloudflare, nối vào thư mục `abc` (Deploy command mặc định `npx wrangler deploy`). Thư mục `abc` dùng `wrangler.toml` của một Worker con, sửa `name = "abc"`.
+2. Đặt `APPS_SCRIPT_URL` (link Web App của bản sao Google Sheet tương ứng) và `PROXY_KEY` cho Worker `abc`.
+3. Trong `wrangler.toml` của **tccb**, thêm:
+   ```toml
+   [[services]]
+   binding = "WARM_abc"
+   service = "abc"
+   entrypoint = "Warm"
+   ```
+
+> ⚠️ Riêng `Code.gs` thì **mỗi bản sao Google Sheet phải dán lại và Deploy → New version** (Apps Script không tự cập nhật theo GitHub). Nếu quên, giao diện hiện **dải vàng "Apps Script của bản này là bản cũ"** ở đầu trang để biết ngay bản nào chưa cập nhật.
+
 ### Chạy thử trên máy (tùy chọn)
 
 ```bash
@@ -85,24 +109,67 @@ npx wrangler dev
 
 ## Phiếu đánh giá mới (từ tháng 10/2026) — mẫu chính thức
 
-Từ **tháng đánh giá 10/2026** app dùng phiếu *"Tiêu chí đánh giá hiệu quả công việc hàng tháng đối với giảng viên, nghiên cứu viên, trợ giảng"* (mẫu chính thức). Các tháng trước vẫn dùng phiếu cũ (ai nộp bù tháng 9 vẫn ra phiếu cũ). Mốc này nằm ở `FORM_V2_FROM` trong `apps-script/Code.gs` **và** `public/index.html` — đổi thì đổi cả hai.
+Từ **tháng đánh giá 10/2026** app dùng phiếu *"Tiêu chí đánh giá hiệu quả công việc hàng tháng đối với VC, NLĐ khối hành chính, hỗ trợ, phục vụ"* (mẫu chính thức). Các tháng trước vẫn dùng phiếu cũ (ai nộp bù tháng 9 vẫn ra phiếu cũ). Mốc này nằm ở `FORM_V2_FROM` trong `apps-script/Code.gs` **và** `public/index.html` — đổi thì đổi cả hai.
 
 - **Nội dung tiêu chí ghi nguyên văn** theo mẫu chính thức.
-- **Chấm đúng chỗ phiếu ghi điểm, mọi mục phần I chấm bước 0,5** từ 0 đến điểm tối đa của mục:
-  - 1.1 → 1.5: 0 → 2 · 2.1: 3 ý × (0 → 1) · 2.2: ý "thường xuyên" 0 → 2 + ý "đột xuất" 0 → 1 · 2.3, 2.4: 2 ý × (0 → 1)
+- **Chấm đúng chỗ phiếu ghi điểm, mọi mục bước 0,5** (từ 0 đến điểm tối đa của mục):
+  - 1.1 – 1.5: mỗi tiêu chí 0 → 2 (khoản trừ của 1.4 trừ vào 2 điểm của 1.4)
+  - 2.1: 3 ý × (0 → 1) · 2.2: ý "thường xuyên" 0 → 2 + ý "đột xuất" 0 → 1 · 2.3: 2 ý × (0 → 1) · 2.4: 2 ý × (0 → 1)
   - 3.1 (0 → 4), 3.2 (0 → 3), 3.3 (0 → 3) — ai cũng tự chấm 3.3
   - Phần II giữ nguyên, mỗi mức có ghi kèm % tương ứng
 - **Điểm thưởng:** tối đa đủ 7 điểm (Phòng TCCB chốt không áp giới hạn 10% KPI; dòng ghi chú trên phiếu vẫn giữ nguyên văn). Đề xuất > 0 thì bắt buộc mô tả cách làm hay & minh chứng. Tổng sau cộng tối đa 100.
-- **Xếp loại chỉ theo tổng điểm:** A+ ≥ 90 · A 70–<90 · B 50–<70 · C < 50. App **không** hạ mức theo điều kiện phần II (không đủ 100% vẫn giữ mức theo điểm) — app dùng để thu thập dữ liệu, xếp loại cuối cùng do Trưởng đơn vị quyết định. Tự xếp loại A+ vẫn phải ghi căn cứ xác nhận vượt mức.
+- **Xếp loại chỉ theo tổng điểm** (đã cộng thưởng, tối đa 100): A+ ≥ 90 · A 70–<90 · B 50–<70 · C < 50. Không hạ xếp loại theo điểm phần II. Đạt A+ thì **bắt buộc ghi căn cứ xác nhận vượt mức**. Cột *Ghi chú xếp loại* trong sheet được giữ để không lệch cấu trúc, nay luôn để trống.
 - **Ô ghi chú** (mô tả thưởng, căn cứ vượt mức) tối đa **100 từ**, có bộ đếm.
 - **Trưởng đơn vị** nhập *Thưởng công nhận* (0 → mức đề xuất; để trống = công nhận đúng đề xuất); Điểm TĐV và xếp loại tự tính lại, vẫn sửa tay được.
 - **Dữ liệu** lưu ở sheet `DuLieuDanhGia_KPI` (tự tạo khi có phiếu đầu tiên); sheet `DuLieuDanhGia` cũ giữ nguyên. Lịch sử cá nhân hiện cả hai; báo cáo/xuất Excel/CSV tháng nào theo mẫu tháng đó. (Sheet `DuLieuDanhGia_V2` nếu có là dữ liệu thử của bản nháp — xóa được.)
+
+## Bảng tổng hợp chi thu nhập tăng thêm (HR)
+
+Trang **Dashboard** của HR có nút **🏛️ Bảng tổng hợp chi thu nhập tăng thêm (mẫu TCCB, .xlsx)**: chọn tháng → bấm nút → chọn phạm vi, ngày lập, tên người ký → tải file Excel **đúng mẫu** "Kết quả đánh giá T9.2026" (quốc hiệu, tiêu đề theo tháng, 14 cột, nhóm theo Đơn vị, khối chữ ký, khổ ngang A4, lặp tiêu đề cột khi in).
+
+- **Danh sách:** mặc định *Mức A* = người được Trưởng đơn vị xếp **A+ hoặc A**; hoặc chọn *Tất cả người đã nộp*. Phiếu chưa được TĐV đánh giá không vào danh sách mức A (có thông báo số lượng).
+- **Nguồn cột:** Chức danh ← cột `CD/CV`, Bộ môn ← cột `DonVi`, Đơn vị ← cột `ĐƠN VỊ` của `DanhSachNhanSu`; *Hiệu trưởng phê duyệt* điền sẵn bằng xếp loại của TĐV (sửa tay trong file nếu khác). *Ý kiến của cá nhân* = căn cứ vượt mức (A+) và mô tả cách làm hay (nếu có đề xuất thưởng).
+- **Khối chữ ký:** mỗi người ký (Người lập bảng · Phòng TCCB · Hiệu trưởng) có ô chọn — bỏ chọn thì khối đó (chức danh + họ tên) không in ra file; bỏ cả ba thì file không có phần chữ ký.
+- File được tạo ngay trên trình duyệt (thư viện ExcelJS tải từ CDN khi bấm nút); tên người ký và các ô chọn được nhớ cho lần sau.
+
+## Hai loại phiếu trong một ứng dụng (bản gộp 2026.10.30)
+
+Một ứng dụng dùng cho cả **giảng viên, nghiên cứu viên, trợ giảng** (phiếu `GV`) và **khối hành chính, hỗ trợ, phục vụ** (phiếu `HCHTPV`). Hai mẫu phiếu cùng cấu trúc điểm (`V2_KEYS`), chỉ khác chữ tiêu chí; nội dung từng mẫu ghi nguyên văn như hai ứng dụng trước (`V2_FORM_HCHTPV`, `V2_FORM_GV` trong `public/index.html`).
+
+**Vị trí đánh giá.** Mỗi dòng trong `DanhSachNhanSu` là một *vị trí đánh giá* = (người, đơn vị, loại phiếu). Thêm cột **`LoaiPhieu`** với giá trị `GV` hoặc `HCHTPV` (để trống = `HCHTPV`). Một người kiêm nhiệm thì có nhiều dòng, mỗi dòng một vị trí:
+
+| MSNV | HoTen | DonVi | TRUONG DON VI | LoaiPhieu |
+|---|---|---|---|---|
+| 002 | Nguyễn Đức Tuấn | Bộ môn X | | GV |
+| 002 | Nguyễn Đức Tuấn | Bộ môn X | x | HCHTPV |
+| 002 | Nguyễn Đức Tuấn | Trường Dược | x | HCHTPV |
+
+- Mỗi vị trí nộp **một phiếu mỗi tháng**. Khóa chống nộp trùng là *mã số + đơn vị + **loại phiếu** + tháng*, nên phiếu `GV` và phiếu `HCHTPV` cùng một bộ môn không chặn nhau.
+- Đăng nhập: người có nhiều vị trí chọn vị trí; về sau dùng **🔄 Chuyển đơn vị**. Trang **Tự đánh giá** hiện thêm danh sách *"Các phiếu của Thầy/Cô tháng …"*, mỗi vị trí đánh dấu ✅ đã nộp / ⏳ chưa nộp và có nút chuyển nhanh, để không ai bỏ sót phiếu kiêm nhiệm.
+- Lịch sử cá nhân, bảng chấm của Trưởng đơn vị và báo cáo HR đều có nhãn/cột **Loại phiếu**. Một người có hai phiếu trong cùng đơn vị thì hiện thành hai dòng, điểm Trưởng đơn vị chấm vào đúng từng phiếu.
+- Bảng tổng hợp chi thu nhập tăng thêm (TCCB) có ô chọn **Loại phiếu**: cả hai / chỉ HCHTPV / chỉ GV; tiêu đề và tên file đổi theo.
+- Dữ liệu vẫn lưu ở `DuLieuDanhGia_KPI`, thêm **cột cuối "Loại phiếu"** (cột 37). Dòng cũ để trống được hiểu là `HCHTPV`. Phiếu tháng trước 10/2026 (mẫu cũ) không phân loại.
+
+### Cài đặt (làm 1 lần)
+
+1. Dán `apps-script/Code.gs` mới vào Apps Script → **Deploy → Manage deployments → ✏️ → New version → Deploy**.
+2. Chạy hàm **`setupLoaiPhieu`**: thêm cột `LoaiPhieu` vào `DanhSachNhanSu` và cột "Loại phiếu" vào `DuLieuDanhGia_KPI`, ô trống điền `HCHTPV` (chạy lại an toàn, không ghi đè ô đã có).
+3. Sửa cột `LoaiPhieu` = `GV` cho các dòng giảng viên / nghiên cứu viên / trợ giảng. Với người kiêm nhiệm, thêm dòng cho từng vị trí như bảng trên.
+4. Chạy hàm **`listMultiRole`** để xem danh sách người có nhiều vị trí và rà soát lần cuối.
+5. Push `public/index.html` lên GitHub để Cloudflare triển khai lại. Chân trang phải hiện *phiên bản 2026.10.30*; nếu Apps Script chưa cập nhật, trang hiện dải vàng cảnh báo.
+
+> Muốn chuyển dữ liệu từ một bản dggv cũ sang bản gộp: dán các dòng `DanhSachNhanSu` và `DuLieuDanhGia_KPI` của dggv vào Sheet của bản gộp (hai sheet cùng cấu trúc cột) rồi đặt cột `LoaiPhieu` = `GV` cho các dòng vừa dán. Sau đó có thể ngừng Worker dggv.
+
+## Người làm việc ở nhiều đơn vị
+
+- Mỗi **vị trí đánh giá** (đơn vị + loại phiếu) đánh giá riêng: kiểm tra "đã gửi" theo *mã số + đơn vị + loại phiếu + tháng* (gửi ở vị trí A vẫn gửi được ở vị trí B; gửi lại ở A thì bị chặn). Lịch sử cá nhân hiện tất cả các vị trí.
+- Nút **🔄 Chuyển đơn vị** (trên menu trái và cạnh dòng "Đơn vị" ở trang Tự đánh giá) — chỉ hiện với người có từ 2 vị trí/vai trò trở lên. Chuyển không cần đăng xuất; đã xác thực OTP lúc đăng nhập thì không phải nhập lại. Mỗi lần chuyển được ghi vào `LichSuDangNhap` (trạng thái "🔄 Chuyển đơn vị").
 
 ## Tốc độ
 
 - **Đọc ít dữ liệu:** backend dùng *TextFinder* của Sheets để tìm đúng dòng cần (theo MSNV, theo tháng) thay vì đọc cả sheet — đăng nhập, kiểm tra đã nộp, lịch sử, bảng Trưởng đơn vị, dashboard HR đều chỉ đọc phần liên quan. Lưu bảng chấm ghi một lần cho cả nhóm dòng.
 - **Ít lần gọi máy chủ:** sau đăng nhập trang tải trước lịch sử cá nhân → chọn tháng hiện kết quả ngay; Trưởng đơn vị chọn tháng là dữ liệu đơn vị được tải trước, bảng chấm và thống kê dùng chung.
-- **Giữ Apps Script "ấm":** `wrangler.toml` có `[triggers] crons` — Cloudflare gọi nhẹ Apps Script 5 phút/lần trong 7h–19h (giờ VN) để tránh phải chờ Google khởi động lại. Có thể chỉnh giờ trong `crons` (giờ UTC).
+- **Giữ Apps Script "ấm":** Worker `tccb` có `[triggers] crons` — 5 phút/lần trong 7h–19h (giờ VN) gọi nhẹ Apps Script của cả 25 đơn vị để tránh phải chờ Google khởi động lại. Có thể chỉnh giờ trong `crons` (giờ UTC).
 - Phần chậm còn lại chủ yếu là thời gian Google chạy Apps Script (~1–2 giây/lần) và gửi email OTP (~1–2 giây) — không rút ngắn thêm được bằng code.
 
 ## Đăng nhập 2 lớp (OTP qua email) cho Trưởng đơn vị & HR
@@ -162,22 +229,20 @@ Mỗi lần đăng nhập, sai mã, gửi/gửi lại OTP, sai OTP… đều đ�
 - Có thể đăng nhập bằng CCCD mất số 0 ở đầu (do Sheets lưu dạng số).
 - Tải lại trang không bị đăng xuất (phiên lưu trong tab trình duyệt).
 
-## Độ ổn định (bản 2026.10.17)
-
-- **Chân trang ghi phiên bản** (vd. `giảng viên · phiên bản 2026.10.17`) — nhìn là biết Worker nào đang chạy bản nào.
-- **Proxy `src/api.js`** không bao giờ đổi lệnh gửi (POST) thành lệnh xem (GET) khi Google chuyển hướng; phản hồi lạ của Google bị chặn lại thay vì chuyển cho giao diện. Đây là nguyên nhân các lỗi `reading 'hoTen'` và `cache.history.filter is not a function` ở bản cũ.
-- **Giao diện** kiểm tra kiểu dữ liệu trả về (danh sách phải là danh sách), có hạn chờ 90 giây. Khi gửi phiếu gặp lỗi đường truyền / quá thời gian / báo trùng, app tự kiểm tra lại lịch sử: nếu phiếu đã lưu thì báo "đã được ghi nhận" thay vì báo lỗi.
-- **Khi cập nhật nhiều Worker:** chép đủ `src/api.js` và `public/index.html` của đúng khối; `src/api.js` dùng chung được cho mọi khối.
-
 ## Xử lý sự cố
 
 | Thông báo | Cách xử lý |
 |---|---|
 | *Máy chủ chưa cấu hình APPS_SCRIPT_URL / PROXY_KEY* | Thêm biến ở Worker → Settings → Variables and Secrets |
-| Build báo tên Worker không khớp | Sửa `name` trong `wrangler.toml` cho trùng tên Worker trên dashboard |
+| Build báo tên Worker không khớp | Sửa `name` trong `wrangler.toml` của thư mục đó cho trùng tên Worker trên dashboard |
+| Build của `tccb` báo lỗi service binding | Một tên trong các khối `WARM_` chưa có Worker trên Cloudflare — tạo Worker đó trước, hoặc xóa khối `WARM_` của nó |
+| Build báo vượt giới hạn Cron (*exceeded … cron triggers*) | Worker con nào đó còn `wrangler.toml` cũ có lịch — thay bằng bản có `crons = []` |
 | *Máy chủ chưa cấu hình PROXY_KEY (Script properties)* | Thêm `PROXY_KEY` ở Apps Script (Bước 1.4) |
 | *Không có quyền truy cập* | `PROXY_KEY` hai bên chưa trùng nhau |
 | *Apps Script không trả về JSON* | Sai URL Web App, hoặc chưa đặt *Who has access = Anyone* |
 | Sửa `Code.gs` nhưng không thấy thay đổi | Chưa tạo **New version** khi deploy |
-| *Máy chủ trả về dữ liệu đăng nhập không đầy đủ* / *Web App trả về doGet thay vì doPost* | `APPS_SCRIPT_URL` sai dạng: dùng đúng URL `https://script.google.com/macros/s/.../exec` lấy ở Deploy → Manage deployments (không dùng `/dev`, không dùng `/a/macros/<tên miền>/...`) |
-| Trang web vẫn hiện giao diện cũ sau khi push | `name` trong `wrangler.toml` phải trùng tên Worker (vd. `dggv` cho `dggv.<tài-khoản>.workers.dev`) và Worker phải được nối với đúng repo này |
+| Dải vàng *"Apps Script của bản này là bản cũ"* | Dán `Code.gs` mới vào bản sao Google Sheet của Worker đó → Deploy → Manage deployments → ✏️ → **New version** |
+| *Máy chủ trả dữ liệu không đúng dạng* | Giao diện và Apps Script lệch phiên bản — cập nhật `Code.gs` như dòng trên. Phiếu đã gửi vẫn được lưu; xem ở "Kết quả & lịch sử" |
+| Chân trang hiện phiên bản | Dòng "phiên bản 2026.10.17" cuối trang cho biết giao diện đang chạy bản nào; nếu thấy bản cũ, nhấn Ctrl+F5 |
+
+**Tự bảo vệ dữ liệu:** sheet mới tạo trong Google Sheets mặc định chỉ có 1000 dòng × 26 cột. Từ bản 2026.10.17, Apps Script tự nới thêm dòng/cột trước khi ghi (phiếu mới cần 36 cột, báo cáo 34 cột), nên không còn lỗi khi số phiếu vượt 1000 hoặc sheet thiếu cột.
